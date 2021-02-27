@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.9.3/simplepeer.min.js"></script>
+    <title>WebRTC workshop</title>
+</head>
+<body>
+    <h1>Your Offer</h1>
+    <textarea id="your-offer" cols="30" rows="10"></textarea>
+    <br>
+    <button id="start-call">
+        Start the Call
+    </button>
+
+    <h1>Partner Offer</h1>
+    <textarea id="partner-answer" cols="30" rows="10"></textarea>
+    <br>
+    <button id="connect">
+        Connect
+    </button>
+
+    <div style="display: flex; justify-content: space-between;">
+        <div>
+            <h1>Your video</h1>
+            <video controls id="you"></video>
+        </div>
+        <div>
+            <h1>Partner's video</h1>
+            <video controls id="partner"></video>
+        </div>
+    </div>
+
+    <script>
+
+        let peer = null;
+        let myStream = null;
+
+        navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        }).then(stream => 
+        {
+            myStream = stream;    
+            setVideo('you', stream);
+        }).catch(err => 
+        {
+            console.log(err);
+        });
+
+        document.getElementById('start-call').addEventListener('click', e => 
+        {
+            peer = new SimplePeer({
+                initiator: true,
+                stream: myStream,
+                trickle: false
+            });
+
+            console.log(peer);
+            setEvents(peer);
+        });
+
+        document.getElementById('connect').addEventListener('click', e => 
+        {
+            if(!peer)
+            {
+                peer = new SimplePeer({
+                    initiator: false,
+                    stream: myStream,
+                    trickle: false
+                });
+            }
+
+            peer.signal(JSON.parse(document.getElementById('partner-answer').value));
+            setEvents(peer);
+        });
+
+        const setVideo = (id, stream) => 
+        {
+            const v = document.getElementById(id);
+            v.srcObject = stream;
+            v.addEventListener('loadedmetadata', () => 
+            {
+                if(id == "you")
+                {
+                    v.muted = true;
+                }
+                v.play();
+            });
+        }
+
+        const setEvents = (p) => 
+        {
+            p.on('signal', data => 
+            {
+                document.getElementById('your-offer').value = JSON.stringify(data);
+            });
+
+            p.on('error', err => 
+            {
+                console.log(err);
+            });
+
+            p.on('stream', stream => 
+            {
+                setVideo('partner', stream);
+            });
+        }
+    </script>
+</body>
+</html>
